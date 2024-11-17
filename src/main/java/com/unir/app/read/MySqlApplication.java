@@ -21,6 +21,18 @@ public class MySqlApplication {
             selectAllEmployeesOfDepartment(connection, "d001");
             selectAllEmployeesOfDepartment(connection, "d002");
 
+            //Ejercicio 1
+            selectCountGenders(connection);
+
+            //Ejericico 2
+            getHighestPaidEmployee(connection, "Marketing");
+
+            //Ejercicio 3
+            getSecondHighestPaidEmployee(connection, "Customer Service");
+
+            //Ejercicio 4
+            getEmployeesHiredInMonth(connection, 5);
+
         } catch (Exception e) {
             log.error("Error al tratar con la base de datos", e);
         }
@@ -66,6 +78,87 @@ public class MySqlApplication {
             log.debug("Empleados del departamento {}: {}",
                     department,
                     employees.getString("Total"));
+        }
+    }
+
+    //1. Obtener el número de hombres y mujeres de la base de datos. Ordenar de forma descendente.
+    private static void selectCountGenders(Connection connection) throws SQLException {
+        PreparedStatement selectEmployees = connection.prepareStatement("SELECT gender, COUNT(*) AS total\n" +
+                "FROM    employees\n" +
+                "GROUP BY gender\n" +
+                "ORDER BY total DESC;");
+
+        ResultSet genders = selectEmployees.executeQuery();
+
+        while (genders.next()) {
+            log.debug("Género: {}, Total: {}",
+                    genders.getString("gender"),
+                    genders.getString("total"));
+        }
+    }
+
+    //2. Mostrar el nombre, apellido y salario de la persona mejor pagada de un departamento concreto (parámetro variable).
+    private static void getHighestPaidEmployee(Connection connection, String nombreDep) throws SQLException {
+        PreparedStatement statement = connection.prepareStatement("SELECT e.first_name AS nombre, e.last_name AS apellido, s.salary AS salario\n" +
+               "FROM employees e\n" +
+               "JOIN dept_emp de ON e.emp_no = de.emp_no\n" +
+               "JOIN salaries s ON e.emp_no = s.emp_no\n" +
+               "JOIN departments d ON de.dept_no = d.dept_no\n" +
+               "WHERE d.dept_name = ?" +
+               "ORDER BY s.salary DESC\n" +
+               "LIMIT 1;");
+
+        statement.setString(1, nombreDep);
+        ResultSet resultSet = statement.executeQuery();
+
+        while (resultSet.next()) {
+            log.debug("nombre: {}, apellido: {}, salario: {}",
+                    resultSet.getString("nombre"),
+                    resultSet.getString("apellido"),
+                    resultSet.getString("salario"));
+        }
+    }
+
+    //3. Mostrar el nombre, apellido y salario de la segunda persona mejor pagada de un departamento concreto (parámetro variable).
+    private static void getSecondHighestPaidEmployee(Connection connection, String nombreDep){
+        String query = "SELECT e.first_name AS nombre, e.last_name AS apellido, s.salary AS salario " +
+                "FROM employees e " +
+                "JOIN dept_emp de ON e.emp_no = de.emp_no " +
+                "JOIN salaries s ON e.emp_no = s.emp_no " +
+                "JOIN departments d ON de.dept_no = d.dept_no " +
+                "WHERE d.dept_name = ? " +
+                "ORDER BY s.salary DESC " +
+                "LIMIT 1 OFFSET 1";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, nombreDep);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                log.debug("nombre: {}, apellido: {}, salario: {}",
+                        resultSet.getString("nombre"),
+                        resultSet.getString("apellido"),
+                        resultSet.getString("salario"));
+            } else {
+                log.debug("No se encontró la segunda persona mejor pagada en el departamento: {}", nombreDep);
+            }
+        } catch (SQLException e) {
+            log.error("Error al ejecutar la consulta para obtener la segunda persona mejor pagada: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("Se produjo un error inesperado: {}", e.getMessage());
+        }
+    }
+
+    //4. Mostrar el número de empleados contratados en un mes concreto (parámetro variable).
+    private static void getEmployeesHiredInMonth(Connection connection, int numMes) throws SQLException {
+        PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS num_Empleados\n" +
+                "FROM employees\n" +
+                "WHERE MONTH(hire_date) = ?");
+
+        statement.setInt(1, numMes);
+        ResultSet resultSet = statement.executeQuery();
+
+        while (resultSet.next()) {
+            log.debug("Numero de empleados: {}",
+                    resultSet.getString("num_Empleados"));
         }
     }
 }

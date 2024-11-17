@@ -18,8 +18,14 @@ public class OracleApplication {
 
             log.debug("Conexión establecida con la base de datos Oracle");
 
-            selectAllEmployees(connection);
-            selectAllCountriesAsXml(connection);
+            //selectAllEmployees(connection);
+            //selectAllCountriesAsXml(connection);
+
+            //Ejercicio 1
+            selectAllEmployeesAsXml(connection);
+
+            //Ejercicio 2
+            selectAllManagersAsXml(connection);
 
         } catch (Exception e) {
             log.error("Error al tratar con la base de datos", e);
@@ -68,6 +74,52 @@ public class OracleApplication {
         ResultSet countries = selectCountries.executeQuery();
         while (countries.next()) {
             log.debug("Country as XML: {}", countries.getString("CountryXml"));
+        }
+    }
+
+    // 1. Mostrar el nombre y apellido de un empleado junto con el nombre de su departamento
+    private static void selectAllEmployeesAsXml(Connection connection) throws SQLException {
+        PreparedStatement selectEmployees = connection.prepareStatement("SELECT\n" +
+                "  XMLELEMENT(\"empleados\",\n" +
+                "       XMLATTRIBUTES(\n" +
+                "         EM.FIRST_NAME AS \"nombre\",\n" +
+                "         EM.LAST_NAME AS \"apellido\",\n" +
+                "         DE.DEPARTMENT_NAME AS \"departamento\"))\n" +
+                "  AS EmpleadosXml\n" +
+                "FROM  HR.EMPLOYEES EM\n" +
+                "JOIN HR.DEPARTMENTS DE ON EM.DEPARTMENT_ID = DE.DEPARTMENT_ID");
+
+        ResultSet employees = selectEmployees.executeQuery();
+        while (employees.next()) {
+            log.debug("Empleados XML: {}", employees.getString("EmpleadosXML"));
+        }
+    }
+
+    // 2. Mostrar el nombre, apellido, nombre de departamento, ciudad y pais de los empleados que son Managers
+    private static void selectAllManagersAsXml(Connection connection) throws SQLException {
+        PreparedStatement selectManagers = connection.prepareStatement("SELECT\n" +
+                "  XMLELEMENT(\"managers\",\n" +
+                "       XMLAGG(\n" +
+                "           XMLELEMENT(\"manager\", \n" +
+                "               XMLELEMENT(\"nombreCompleto\", \n" +
+                "                   XMLFOREST(EM.FIRST_NAME AS \"nombre\", EM.LAST_NAME AS \"apellido\") \n" +
+                "               ), \n" +
+                "               XMLELEMENT(\"department\", DE.DEPARTMENT_NAME), \n" +
+                "               XMLELEMENT(\"city\", LO.CITY), \n" +
+                "               XMLELEMENT(\"country\", CO.COUNTRY_NAME) \n" +
+                "           ) \n" +
+                "       ) \n" +
+                "  ) AS ManagersXml\n" +
+                "FROM HR.EMPLOYEES EM\n" +
+                "JOIN HR.DEPARTMENTS DE ON EM.DEPARTMENT_ID = DE.DEPARTMENT_ID\n" +
+                "JOIN HR.LOCATIONS LO ON DE.LOCATION_ID = LO.LOCATION_ID\n" +
+                "JOIN HR.COUNTRIES CO ON LO.COUNTRY_ID = CO.COUNTRY_ID\n" +
+                "JOIN HR.JOBS JO ON EM.JOB_ID = JO.JOB_ID\n" +
+                "WHERE JO.JOB_TITLE LIKE '%Manager%'");
+
+        ResultSet managers = selectManagers.executeQuery();
+        while (managers.next()) {
+            log.debug("Managers XML: {}", managers.getString("ManagersXml"));
         }
     }
 }
